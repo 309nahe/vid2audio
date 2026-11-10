@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Video → Audio</title>
+<style>
+:root{color-scheme:dark light;font-family:system-ui,sans-serif}
+body{max-width:30rem;margin:8vh auto;padding:0 1rem}
+h1{font-size:1.4rem}
+#drop{border:2px dashed #888;border-radius:12px;padding:2.5rem 1rem;text-align:center;cursor:pointer}
+#drop.over{border-color:#4a9;background:#4a92}
+select,button{font:inherit;padding:.5rem .8rem;margin-top:1rem}
+button{cursor:pointer}
+#msg{margin-top:1rem;min-height:1.5rem}
+.err{color:#d44}
+audio{width:100%;margin-top:1rem}
+small{opacity:.7}
+.row{display:flex;align-items:center;gap:.3rem;margin-top:1rem}
+.row input{flex:1;font:inherit;padding:.5rem}
+.btn{display:inline-block;margin-top:1rem;padding:.5rem .8rem;border:1px solid #888;border-radius:6px;text-decoration:none;color:inherit}
+</style></head><body>
+<h1>Video → Audio</h1>
+<div id="drop">Drop a video here or click to choose<br><small>max 3 min · nothing is stored</small></div>
+<input id="f" type="file" accept="video/*,audio/*" hidden>
+<label>Format
+<select id="fmt"><option value="mp3">MP3</option><option value="m4a">M4A (AAC)</option><option value="opus">Opus</option><option value="wav">WAV</option><option value="flac">FLAC</option></select></label>
+<div id="msg"></div><div id="out"></div>
+<script>
+const $=id=>document.getElementById(id),drop=$('drop'),f=$('f'),msg=$('msg'),out=$('out');
+drop.onclick=()=>f.click();
+drop.ondragover=e=>{e.preventDefault();drop.classList.add('over')};
+drop.ondragleave=()=>drop.classList.remove('over');
+drop.ondrop=e=>{e.preventDefault();drop.classList.remove('over');if(e.dataTransfer.files[0])go(e.dataTransfer.files[0])};
+f.onchange=()=>f.files[0]&&go(f.files[0]);
+async function go(file){
+  out.innerHTML='';msg.className='';msg.textContent='Converting '+file.name+'…';
+  const fd=new FormData();fd.append('format',$('fmt').value);fd.append('file',file);
+  try{
+    const r=await fetch('convert',{method:'POST',body:fd});
+    if(!r.ok){msg.className='err';msg.textContent=await r.text();return}
+    const b=await r.blob(),url=URL.createObjectURL(b);
+    const ext=$('fmt').value,base=file.name.replace(/\.[^.]+$/,'');
+    msg.textContent='Done ('+(b.size/1048576).toFixed(1)+' MB)';
+    out.innerHTML='<audio controls src="'+url+'"></audio><div class="row"><input id="nm" type="text" maxlength="80" aria-label="File name"><span>.'+ext+'</span></div>';
+    const nm=$('nm');nm.value=base;
+    const a=document.createElement('a');a.textContent='Download';a.className='btn';
+    const upd=()=>{const n=nm.value.replace(/[\\\/:*?"<>|\x00-\x1f]/g,'').trim()||'audio';a.href=url;a.download=n+'.'+ext};
+    nm.oninput=upd;upd();out.appendChild(a);
+  }catch(e){msg.className='err';msg.textContent='Failed: '+e}
+  f.value='';
+}
+</script></body></html>

@@ -1,0 +1,22 @@
+[Unit]
+Description=vid2audio (video to audio extractor, tailnet only)
+After=network.target
+
+[Service]
+User=CHANGEME
+ExecStart=/opt/vid2audio/target/release/vid2audio
+Environment=BIND=127.0.0.1:8444
+Restart=on-failure
+RestartSec=3
+StartLimitIntervalSec=300
+StartLimitBurst=20
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadOnlyPaths=/opt/vid2audio
+MemoryMax=1G
+CPUQuota=200%
+
+[Install]
+WantedBy=multi-user.target

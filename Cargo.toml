@@ -1,0 +1,16 @@
+[package]
+name = "vid2audio"
+version = "0.1.0"
+edition = "2021"
+description = "Tiny self-hosted tool that extracts audio from short videos (max 3 min), no storage"
+publish = false
+
+[dependencies]
+axum = { version = "0.8", features = ["multipart"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "process", "fs", "io-util", "time", "sync", "net"] }
+tempfile = "3"
+
+[profile.release]
+opt-level = "s"
+lto = true
+strip = true
