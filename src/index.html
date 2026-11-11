@@ -1,51 +1,194 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Video → Audio</title>
+<title>vid2audio</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230b1020'/%3E%3Ccircle cx='16' cy='16' r='9' stroke='%235eead4' stroke-width='2.5' fill='none'/%3E%3Ccircle cx='16' cy='16' r='3' fill='%235eead4'/%3E%3C/svg%3E">
 <style>
-:root{color-scheme:dark light;font-family:system-ui,sans-serif}
-body{max-width:30rem;margin:8vh auto;padding:0 1rem}
-h1{font-size:1.4rem}
-#drop{border:2px dashed #888;border-radius:12px;padding:2.5rem 1rem;text-align:center;cursor:pointer}
-#drop.over{border-color:#4a9;background:#4a92}
-select,button{font:inherit;padding:.5rem .8rem;margin-top:1rem}
-button{cursor:pointer}
-#msg{margin-top:1rem;min-height:1.5rem}
-.err{color:#d44}
-audio{width:100%;margin-top:1rem}
-small{opacity:.7}
-.row{display:flex;align-items:center;gap:.3rem;margin-top:1rem}
-.row input{flex:1;font:inherit;padding:.5rem}
-.btn{display:inline-block;margin-top:1rem;padding:.5rem .8rem;border:1px solid #888;border-radius:6px;text-decoration:none;color:inherit}
+:root{
+  --bg:#070b14;--card:rgba(17,25,40,.72);--line:rgba(120,160,220,.16);
+  --fg:#e6edf7;--muted:#8194ad;--accent:#5eead4;--accent2:#7aa2ff;
+  --ok:#39d98a;--bad:#ff6b6b;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,'JetBrains Mono',Menlo,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--bg);height:100%}
+body{
+  font-family:var(--sans);
+  color:var(--fg);min-height:100vh;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;padding:24px 16px;
+  background:
+    radial-gradient(800px 400px at 20% -8%,rgba(122,162,255,.14),transparent 60%),
+    radial-gradient(600px 350px at 85% 5%,rgba(94,234,212,.10),transparent 55%),
+    var(--bg);
+}
+.wrap{width:100%;max-width:480px}
+.suite{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:22px}
+.suite a{font:11.5px/1 var(--mono);color:var(--muted);text-decoration:none;padding:6px 10px;border-radius:999px;border:1px solid transparent;transition:all .2s}
+.suite a:hover{color:var(--fg);background:rgba(120,160,220,.08)}
+.suite a.on{color:var(--accent);border-color:rgba(94,234,212,.3);background:rgba(94,234,212,.08)}
+header{display:flex;align-items:center;gap:12px;margin-bottom:24px}
+.logo{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#5eead4,#7aa2ff);
+  display:grid;place-items:center;flex:none;
+  box-shadow:0 6px 24px rgba(94,234,212,.25)}
+.logo svg{width:22px;height:22px}
+h1{font-size:20px;letter-spacing:-.02em;line-height:1.2}
+.sub{color:var(--muted);font-size:12px;margin-top:2px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:24px;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);box-shadow:0 10px 40px rgba(0,0,0,.28)}
+label.field{display:block;font-size:11px;font-weight:600;text-transform:uppercase;
+  letter-spacing:.1em;color:var(--muted);margin-bottom:8px}
+#drop{border:2px dashed var(--line);border-radius:12px;padding:2.5rem 1rem;text-align:center;
+  cursor:pointer;transition:all .2s;color:var(--muted);font-size:14px}
+#drop:hover{border-color:rgba(94,234,212,.35);background:rgba(94,234,212,.04)}
+#drop.over{border-color:var(--accent);background:rgba(94,234,212,.08)}
+#drop .icon{font-size:28px;margin-bottom:8px;opacity:.5}
+#drop small{display:block;margin-top:6px;font-size:11px;opacity:.6}
+.fmt-row{display:flex;gap:8px;margin-top:16px;align-items:center}
+.fmt-row label.field{margin:0;white-space:nowrap;line-height:38px}
+.fmt-group{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;flex:1}
+.fmt-group button{flex:1;background:rgba(120,160,220,.06);border:none;color:var(--muted);
+  padding:9px 10px;font:12px/1 var(--mono);cursor:pointer;transition:all .2s;font-weight:600}
+.fmt-group button.active{background:rgba(94,234,212,.15);color:var(--accent);
+  box-shadow:inset 0 0 0 1px rgba(94,234,212,.35)}
+.fmt-group button:hover:not(.active){background:rgba(120,160,220,.12)}
+.progress{margin-top:20px;display:none}
+.progress.show{display:block}
+.pbar-wrap{height:6px;border-radius:99px;background:rgba(120,160,220,.12);overflow:hidden}
+.pbar{height:100%;border-radius:99px;transition:width .4s ease;width:0}
+.pbar.conv{background:linear-gradient(90deg,#5eead4,#7aa2ff);animation:shimmer 1.5s infinite}
+.pbar.done{background:var(--ok);animation:none}
+.pbar.err{background:var(--bad);animation:none}
+@keyframes shimmer{0%{opacity:.7}50%{opacity:1}100%{opacity:.7}}
+.ptext{font-size:12px;color:var(--muted);margin-top:8px;font-family:var(--mono);min-height:18px}
+.ptext.err{color:var(--bad)}
+.result{margin-top:20px;display:none;background:rgba(57,217,138,.06);border:1px solid rgba(57,217,138,.2);
+  border-radius:12px;padding:16px}
+.result.show{display:block}
+.result audio{width:100%;margin-bottom:14px;border-radius:8px}
+.rename-row{display:flex;align-items:center;gap:6px;margin-bottom:14px}
+.rename-row input{flex:1;background:rgba(120,160,220,.08);border:1px solid var(--line);border-radius:8px;
+  padding:8px 10px;font:13px/1 var(--mono);color:var(--fg);outline:none;transition:border-color .2s}
+.rename-row input:focus{border-color:rgba(94,234,212,.5)}
+.rename-row .ext{font-family:var(--mono);font-size:13px;color:var(--muted);flex:none}
+.result-meta{font-family:var(--mono);font-size:11.5px;color:var(--muted);margin-bottom:14px}
+#dl{display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#1f6feb,#388bfd);
+  color:#fff;border:none;padding:10px 18px;border-radius:10px;font:13px/1 var(--sans);font-weight:650;
+  cursor:pointer;text-decoration:none;box-shadow:0 6px 18px rgba(56,139,253,.25);transition:all .2s;
+  white-space:nowrap}
+#dl:hover{filter:brightness(1.1)}
+#dl svg{width:14px;height:14px;flex:none}
+.caps{margin-top:24px;font-size:11px;color:var(--muted);line-height:1.6;opacity:.7}
+.caps span{font-family:var(--mono);color:var(--accent);opacity:1}
+input[type=file]{display:none}
+@media(max-width:520px){
+  .wrap{max-width:100%}
+  .fmt-row{flex-direction:column;align-items:stretch}
+  .fmt-row label.field{line-height:1}
+}
 </style></head><body>
-<h1>Video → Audio</h1>
-<div id="drop">Drop a video here or click to choose<br><small>max 3 min · nothing is stored</small></div>
-<input id="f" type="file" accept="video/*,audio/*" hidden>
-<label>Format
-<select id="fmt"><option value="mp3">MP3</option><option value="m4a">M4A (AAC)</option><option value="opus">Opus</option><option value="wav">WAV</option><option value="flac">FLAC</option></select></label>
-<div id="msg"></div><div id="out"></div>
+<div class="wrap">
+  <nav class="suite"><a class="on" href="./">audio</a><a href="../xvids/">xvids</a><a href="../drop/">drop</a><a href="../squish/">squish</a><a href="../speed/">speed</a></nav>
+  <header>
+    <div class="logo"><svg viewBox="0 0 22 22" fill="none"><circle cx="11" cy="11" r="8" stroke="#071018" stroke-width="2.2" fill="none"/><circle cx="11" cy="11" r="2.5" fill="#071018"/></svg></div>
+    <div><h1>vid2audio</h1><div class="sub">extract audio from video files</div></div>
+  </header>
+
+  <div class="card">
+    <div id="drop">
+      <div class="icon">&#9835;</div>
+      Drop a video here or click to choose
+      <small>max 3 min · nothing is stored</small>
+    </div>
+    <input id="f" type="file" accept="video/*,audio/*">
+
+    <div class="fmt-row">
+      <label class="field">Format</label>
+      <div class="fmt-group">
+        <button type="button" data-fmt="mp3" class="active">MP3</button>
+        <button type="button" data-fmt="m4a">M4A</button>
+        <button type="button" data-fmt="opus">Opus</button>
+        <button type="button" data-fmt="wav">WAV</button>
+        <button type="button" data-fmt="flac">FLAC</button>
+      </div>
+    </div>
+
+    <div class="progress" id="progress">
+      <div class="pbar-wrap"><div class="pbar" id="pbar"></div></div>
+      <div class="ptext" id="ptext"></div>
+    </div>
+
+    <div class="result" id="result">
+      <audio controls id="player"></audio>
+      <div class="rename-row">
+        <input id="nm" type="text" maxlength="80" aria-label="File name" placeholder="filename">
+        <span class="ext" id="ext">.mp3</span>
+      </div>
+      <div class="result-meta" id="meta"></div>
+      <a id="dl"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 1v9m0 0L4.5 6.5M8 10l3.5-3.5M2 13h12"/></svg><span id="dltxt">Save</span></a>
+    </div>
+  </div>
+
+  <div class="caps">
+    Max: <span>3 min</span>, <span>300 MB</span> upload ·
+    Formats: <span>MP3</span> <span>M4A</span> <span>Opus</span> <span>WAV</span> <span>FLAC</span> ·
+    nothing is stored
+  </div>
+</div>
+
 <script>
-const $=id=>document.getElementById(id),drop=$('drop'),f=$('f'),msg=$('msg'),out=$('out');
+const $=id=>document.getElementById(id);
+const drop=$('drop'),f=$('f'),prog=$('progress'),pbar=$('pbar'),ptext=$('ptext'),
+      res=$('result'),player=$('player'),nm=$('nm'),ext=$('ext'),dl=$('dl'),meta=$('meta');
+let fmt='mp3',blobUrl=null;
+
+document.querySelectorAll('.fmt-group button').forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll('.fmt-group button').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');fmt=b.dataset.fmt;
+  };
+});
+
 drop.onclick=()=>f.click();
 drop.ondragover=e=>{e.preventDefault();drop.classList.add('over')};
 drop.ondragleave=()=>drop.classList.remove('over');
 drop.ondrop=e=>{e.preventDefault();drop.classList.remove('over');if(e.dataTransfer.files[0])go(e.dataTransfer.files[0])};
-f.onchange=()=>f.files[0]&&go(f.files[0]);
+f.onchange=()=>{if(f.files[0])go(f.files[0])};
+
+function showProgress(text,cls,width){
+  prog.classList.add('show');res.classList.remove('show');
+  pbar.className='pbar '+cls;pbar.style.width=width;
+  ptext.className='ptext'+(cls==='err'?' err':'');ptext.textContent=text;
+}
+
 async function go(file){
-  out.innerHTML='';msg.className='';msg.textContent='Converting '+file.name+'…';
-  const fd=new FormData();fd.append('format',$('fmt').value);fd.append('file',file);
+  if(blobUrl){URL.revokeObjectURL(blobUrl);blobUrl=null}
+  res.classList.remove('show');
+  showProgress('Converting '+file.name+'…','conv','60%');
+  const fd=new FormData();fd.append('format',fmt);fd.append('file',file);
   try{
     const r=await fetch('convert',{method:'POST',body:fd});
-    if(!r.ok){msg.className='err';msg.textContent=await r.text();return}
-    const b=await r.blob(),url=URL.createObjectURL(b);
-    const ext=$('fmt').value,base=file.name.replace(/\.[^.]+$/,'');
-    msg.textContent='Done ('+(b.size/1048576).toFixed(1)+' MB)';
-    out.innerHTML='<audio controls src="'+url+'"></audio><div class="row"><input id="nm" type="text" maxlength="80" aria-label="File name"><span>.'+ext+'</span></div>';
-    const nm=$('nm');nm.value=base;
-    const a=document.createElement('a');a.textContent='Download';a.className='btn';
-    const upd=()=>{const n=nm.value.replace(/[\\\/:*?"<>|\x00-\x1f]/g,'').trim()||'audio';a.href=url;a.download=n+'.'+ext};
-    nm.oninput=upd;upd();out.appendChild(a);
-  }catch(e){msg.className='err';msg.textContent='Failed: '+e}
+    if(!r.ok){showProgress(await r.text(),'err','100%');f.value='';return}
+    const b=await r.blob();
+    blobUrl=URL.createObjectURL(b);
+    const base=file.name.replace(/\.[^.]+$/,'');
+    const mb=(b.size/1048576).toFixed(1);
+
+    showProgress('Done','done','100%');
+    player.src=blobUrl;
+    nm.value=base;
+    ext.textContent='.'+fmt;
+    meta.textContent=mb+' MB';
+
+    const upd=()=>{
+      const n=nm.value.replace(/[\\\/:*?"<>|\x00-\x1f]/g,'').trim()||'audio';
+      dl.href=blobUrl;dl.download=n+'.'+fmt;
+      $('dltxt').textContent='Save '+n+'.'+fmt;
+    };
+    nm.oninput=upd;upd();
+    res.classList.add('show');
+    res.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }catch(e){showProgress('Failed: '+e,'err','100%')}
   f.value='';
 }
 </script></body></html>
